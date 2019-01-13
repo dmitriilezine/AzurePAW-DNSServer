@@ -1,8 +1,349 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {},
-  "variables": {},
-  "resources": [],
+  "parameters": {
+
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the Administrator of the new VMs and Domain"
+      },
+      "defaultValue": "labadmin"
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password for the Administrator account of the new VMs and Domain. If you do not change it, then it will look like this: Subscription#SUBSCRIPTIONID"
+      },
+      "defaultValue": "[concat('Subscription#',subscription().subscriptionId)]"
+    },
+    "VirtualMachineSize": {
+      "type": "string",
+      "allowedValues": [
+        "Standard_DS12_v2",
+        "Standard_DS2_v2",
+        "Standard_D8S_v3",
+        "Standard_A2"
+      ],
+      "metadata": {
+        "description": "VM Size. The bigger it is, the more $ you will spend."
+      },
+      "defaultValue": "Standard_DS2_v2"
+    },
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "defaultValue": "Add vNet Name where this VM will be deployed to",
+      "metadata": {
+        "description": "Specify the name for the vNet to whcih this swerver will be deployed."
+      }
+    },
+    "existingVirtualNetworkRG": {
+      "type": "string",
+      "defaultValue": "Add vNet RG Name",
+      "metadata": {
+        "description": "Name of the existing VNET resource group"
+      }
+    },
+    "dnsServerSubnetName": {
+      "type": "string",
+      "defaultValue": "Add Subnet Name where this DNS server will be deployed in vNet",
+      "metadata": {
+        "description": "Name of the subnet in the virtual network you want to put this VM"
+      }
+    },
+    "VMName": {
+      "type": "string",
+      "metadata": {
+        "description": "Must be compliant with Windows Server naming convention"
+      },
+      "defaultValue": "DNS-LAB"
+    },
+    "serverIPAddress": {
+      "type": "string",
+      "defaultValue": "10.0.10.4",
+      "metadata": {
+        "description": "Specify IP addess of the server in that target subnet"
+      }
+    },
+    "diagnosticsStorageAccountName": {
+      "type": "string",
+      "defaultValue": "RealStorageAccountName",
+      "metadata": {
+        "description": "Specify storage account that will be used for VM diagnostics"
+      }
+    },
+    "StorageAccountRG": {
+      "type": "string",
+      "defaultValue": "RG where Storage account is located",
+      "metadata": {
+        "description": "Specify storage account RG"
+      }
+    },
+    "adeKeyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault Name used for Azure Disk Encryption for this VM. Must be in the same region as this VM"
+      }
+    },
+    "adeKeyVaultResourceGroup": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault RG"
+      }
+    },
+    "ScriptsLocation": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account URL for scripts"
+      },
+      "defaultValue": "https://azurepaw.blob.core.windows.net"
+    },
+    "subscriptionID": {
+      "type": "string",
+      "metadata": {
+        "description": "Subscription ID is used to provide access path to the Secrets Key Vault"
+      },
+      "defaultValue": "Copy and Paste Subscription ID for Secrets Key Vault. It is provided on the instructions OneNote page."
+    },
+    "secretsVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the Key Vault where secrets are stored"
+      }
+    },
+    "secretsKeyVaultRG": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the RG where Key Vault is stored"
+      }
+    },
+    "ADDSDomainName": {
+      "type": "string",
+      "metadata": {
+        "description": "DNS Name for the ADDS. Conditonal forwarder will be configured to point this DNS server to the ADDS"
+      },
+      "defaultValue": "Replace with your domain name, ie contoso.com. Top level only supported at this time."
+    },
+    "ADDSDomainNameIPAddress": {
+      "type": "string",
+      "metadata": {
+        "description": "IP Address of the first DC. It will be used to configure DNS name with condtional forwarder"
+      },
+      "defaultValue": "10.0.1.4"
+    }
+  },
+  "variables": {
+    "assetLocation": "https://raw.githubusercontent.com/dmitriilezine/AzurePAW-DNSServer/master/AzurePAW-DNSServer",
+    "assetLocationStorageAccount": "[parameters('ScriptsLocation')]",
+    "VMSize": "[parameters('VirtualMachineSize')]",
+    "OSVersion": "2016-Datacenter",
+
+    "subnetResourceID": "[resourceId(parameters('existingVirtualNetworkRG'), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingVirtualNetworkName'), parameters('dnsServerSubnetName'))]",
+    "dnsServerIpAddress": "[parameters('serverIPAddress')]",
+
+    "dnsServerTemplateURL": "[concat(variables('assetLocation'),'/data/ServerVm.json')]",
+    "vmDiagnosticsTemplateURL": "[concat(variables('assetLocation'),'/data/vmDiagnostics.json')]",
+    "vmAntimalwareTemplateURL": "[concat(variables('assetLocation'),'/data/deployAntimalware.json')]",
+    "vmADETemplateURL": "[concat(variables('assetLocation'),'/data/encryptVM.json')]",
+    "deployDNSTemplateURL": "[concat(variables('assetLocation'),'/data/deployDNS.json')]",
+
+    "dnsVMName": "[parameters('VMName')]",
+
+    "deployDNSVM": "DeployDNSVM",
+    "deployDNSVMId": "[concat('Microsoft.Resources/deployments/', variables('deployDNSVM'))]",
+    "deployVMDiagnostics": "deployVMDiagnostics",
+    "deployVMDiagnosticsId": "[concat('Microsoft.Resources/deployments/', variables('deployVMDiagnostics'))]",
+    "deployAntimalware": "deployAntimalware",
+    "deployAntimalwareId": "[concat('Microsoft.Resources/deployments/', variables('deployAntimalware'))]",
+    "encryptVM": "encryptVM",
+    "encryptVMId": "[concat('Microsoft.Resources/deployments/', variables('encryptVM'))]",
+    "deployDNS": "DeployDNS",
+    "deployDNSId": "[concat('Microsoft.Resources/deployments/', variables('deployDNS'))]",
+
+    "secretsVaultName": "[parameters('secretsVaultName')]",
+    "secretName": "AzurePAWPOC1SAKey2",
+    "secretnameSASurl": "AzurePAWPOC1SAS",
+    "secretsKeyVaultRG": "[parameters('secretsKeyVaultRG')]",
+    "secretsKeyVaultID": "[concat('/subscriptions/', parameters('subscriptionID'), '/resourceGroups/', variables('secretsKeyVaultRG'), '/providers/Microsoft.KeyVault/vaults/', variables('secretsVaultName'))]",
+
+
+    "imageOffer": "WindowsServer",
+    "imagePublisher": "MicrosoftWindowsServer",
+
+    "dnsNICName": "[concat('DNS-Nic',resourceGroup().name)]",
+
+    "accountid": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/',parameters('StorageAccountRG'), '/providers/','Microsoft.Storage/storageAccounts/', parameters('diagnosticsStorageAccountName'))]",
+    "vmResourceId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+
+  },
+  "resources": [
+
+    {
+      "name": "[variables('deployDNSVM')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('dnsServerTemplateURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('adminPassword')]"
+          },
+          "subnetResourceID": {
+            "value": "[variables('subnetResourceID')]"
+          },
+          "windowsImageSKU": {
+            "value": "[variables('OSVersion')]"
+          },
+          "vmName": {
+            "value": "[variables('dnsVMName')]"
+          },
+          "vmSize": {
+            "value": "[variables('VMSize')]"
+          },
+          "nicName": {
+            "value": "[variables('dnsNICName')]"
+          },
+          "primaryIpAddress": {
+            "value": "[variables('dnsServerIpAddress')]"
+          },
+          "diagnosticsStorageAccountName": {
+            "value": "[parameters('diagnosticsStorageAccountName')]"
+          }
+        }
+      }
+    },
+
+
+    {
+      "name": "[variables('deployVMDiagnostics')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[variables('deployDNSVM')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmDiagnosticsTemplateURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vmName": {
+            "value": "[variables('dnsVMName')]"
+          },
+          "diagnosticsStorageAccountName": {
+            "value": "[parameters('diagnosticsStorageAccountName')]"
+          },
+          "accountid": {
+            "value": "[variables('accountid')]"
+          },
+          "vmResourceId": {
+            "value": "[variables('vmResourceId')]"
+          }
+        }
+      }
+    },
+    {
+      "name": "[variables('deployAntimalware')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[variables('deployDNSVM')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmAntimalwareTemplateURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vmName": {
+            "value": "[variables('dnsVMName')]"
+          }
+        }
+      }
+    },
+    {
+      "comments": "Deploy DNS and activate second Disk",
+      "name": "[variables('deployDNS')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[variables('deployDNSVM')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('deployDNSTemplateURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vmName": {
+            "value": "[variables('dnsVMName')]"
+          },
+          "ADDSDomainName": {
+            "value": "[parameters('ADDSDomainName')]"
+          },
+          "ADDSDomainNameIPAddress": {
+            "value": "[parameters('ADDSDomainNameIPAddress')]"
+          },
+          "assetLocationStorageAccount": {
+            "value": "[variables('assetLocationStorageAccount')]"
+          },
+          "storageAccountKeyviaKeyvault": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('secretsKeyVaultID')]"
+              },
+              "secretName": "[variables('secretName')]"
+            }
+          },
+          "storageAccountSASTokenviaKeyvault": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('secretsKeyVaultID')]"
+              },
+              "secretName": "[variables('secretnameSASurl')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "[variables('encryptVM')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2015-01-01",
+      "dependsOn": [
+        "[variables('deployDNSVM')]",
+        "[variables('deployDNS')]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmADETemplateURL')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vmName": {
+            "value": "[variables('dnsVMName')]"
+          },
+          "adeKeyVaultName": {
+            "value": "[parameters('adeKeyVaultName')]"
+          },
+          "keyVaultResourceGroup": {
+            "value": "[parameters('adeKeyVaultResourceGroup')]"
+          }
+        }
+
+      }
+    }
+  ],
   "outputs": {}
 }
