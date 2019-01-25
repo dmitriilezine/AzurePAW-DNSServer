@@ -120,17 +120,25 @@
     "ADDSDomainName": {
       "type": "string",
       "metadata": {
+        "description": "DNS Name for the ADDS. Primary DNS zone will be created for this DNS on this DNS server"
+      },
+      "defaultValue": "Replace with your domain name, ie fabrikam.com. Top level only supported at this time."
+    },
+    "ADDSDomainNameCF": {
+      "type": "string",
+      "metadata": {
         "description": "DNS Name for the ADDS. Conditonal forwarder will be configured to point this DNS server to the ADDS"
       },
       "defaultValue": "Replace with your domain name, ie contoso.com. Top level only supported at this time."
     },
-    "ADDSDomainNameIPAddress": {
+    "ADDSDomainNameCFIPAddress": {
       "type": "string",
       "metadata": {
         "description": "IP Address of the first DC. It will be used to configure DNS name with condtional forwarder"
       },
       "defaultValue": "10.0.1.4"
     }
+
   },
   "variables": {
     "assetLocation": "https://raw.githubusercontent.com/dmitriilezine/AzurePAW-DNSServer/master/AzurePAW-DNSServer",
@@ -291,8 +299,11 @@
           "ADDSDomainName": {
             "value": "[parameters('ADDSDomainName')]"
           },
-          "ADDSDomainNameIPAddress": {
-            "value": "[parameters('ADDSDomainNameIPAddress')]"
+          "ADDSDomainNameCF": {
+            "value": "[parameters('ADDSDomainNameCF')]"
+          },
+          "ADDSDomainNameCFIPAddress": {
+            "value": "[parameters('ADDSDomainNameCFIPAddress')]"
           },
           "assetLocationStorageAccount": {
             "value": "[variables('assetLocationStorageAccount')]"

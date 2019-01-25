@@ -11,13 +11,19 @@
     "ADDSDomainName": {
       "type": "string",
       "metadata": {
-        "description": "ADDS DNS name"
+        "description": "ADDS DNS name for Primary DNS Zone"
       }
     },
-    "ADDSDomainNameIPAddress": {
+    "ADDSDomainNameCF": {
+      "type": "string",
+      "metadata": {
+        "description": "ADDS DNS name for Conditional Forwarder"
+      }
+    },
+    "ADDSDomainNameCFIPAddress": {
       "type": "securestring",
       "metadata": {
-        "description": "ADDS DC1 IP address"
+        "description": "ADDS DC1 IP address for Conditional Forwarder"
       }
     },
     "assetLocationStorageAccount": {
@@ -63,7 +69,8 @@
 
           "properties": {
             "ADDSDNSName": "[parameters('ADDSDomainName')]",
-            "ADDSDCIPAddress": "[parameters('ADDSDomainNameIPAddress')]"
+            "ADDSDNSNameCF": "[parameters('ADDSDomainNameCF')]",
+            "ADDSDCIPAddress": "[parameters('ADDSDomainNameCFIPAddress')]"
           }
         },
         "protectedSettings": {
