@@ -305,6 +305,9 @@
           "ADDSDomainNameCFIPAddress": {
             "value": "[parameters('ADDSDomainNameCFIPAddress')]"
           },
+          "DNSServerIP": {
+            "value": "[parameters('serverIPAddress')]"
+          },
           "assetLocationStorageAccount": {
             "value": "[variables('assetLocationStorageAccount')]"
           },

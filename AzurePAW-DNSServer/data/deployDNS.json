@@ -21,7 +21,13 @@
       }
     },
     "ADDSDomainNameCFIPAddress": {
-      "type": "securestring",
+      "type": "string",
+      "metadata": {
+        "description": "ADDS DC1 IP address for Conditional Forwarder"
+      }
+    },
+    "DNSServerIP": {
+      "type": "string",
       "metadata": {
         "description": "ADDS DC1 IP address for Conditional Forwarder"
       }
@@ -70,7 +76,9 @@
           "properties": {
             "ADDSDNSName": "[parameters('ADDSDomainName')]",
             "ADDSDNSNameCF": "[parameters('ADDSDomainNameCF')]",
-            "ADDSDCIPAddress": "[parameters('ADDSDomainNameCFIPAddress')]"
+            "ADDSDCIPAddress": "[parameters('ADDSDomainNameCFIPAddress')]",
+            "DNSIP": "[parameters('DNSServerIP')]",
+            "DNSHost": "[parameters('vmName')]"
           }
         },
         "protectedSettings": {
