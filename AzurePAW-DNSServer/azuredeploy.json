@@ -117,6 +117,20 @@
         "description": "The name of the RG where Key Vault is stored"
       }
     },
+    "SAsecretKeyName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the secret that holds key for Storage account"
+      },
+      "defaultValue": "AzurePAWPOC1SAKey2"
+    },
+    "SAsecretSASName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the secret that holds SAS for Storage account"
+      },
+      "defaultValue": "AzurePAWPOC1SAS"
+    },
     "ADDSDomainName": {
       "type": "string",
       "metadata": {
@@ -127,7 +141,7 @@
     "ADDSDomainNameCF": {
       "type": "string",
       "metadata": {
-        "description": "DNS Name for the ADDS. Conditonal forwarder will be configured to point this DNS server to the ADDS"
+        "description": "DNS Name for the ADDS. Conditional forwarder will be configured to point this DNS server to the ADDS"
       },
       "defaultValue": "Replace with your domain name, ie contoso.com. Top level only supported at this time."
     },
@@ -169,12 +183,14 @@
     "deployDNSId": "[concat('Microsoft.Resources/deployments/', variables('deployDNS'))]",
 
     "secretsVaultName": "[parameters('secretsVaultName')]",
-    "secretName": "AzurePAWPOC1SAKey2",
-    "secretnameSASurl": "AzurePAWPOC1SAS",
+    "secretNameold": "AzurePAWPOC1SAKey2",
+    "secretName": "[parameters('SAsecretKeyName')]",
+    "secretnameSASurlold": "AzurePAWPOC1SAS",
+    "secretnameSASurl": "[parameters('SAsecretSASName')]",
+
     "secretsKeyVaultRG": "[parameters('secretsKeyVaultRG')]",
     "secretsKeyVaultID": "[concat('/subscriptions/', parameters('subscriptionID'), '/resourceGroups/', variables('secretsKeyVaultRG'), '/providers/Microsoft.KeyVault/vaults/', variables('secretsVaultName'))]",
-
-
+    
     "imageOffer": "WindowsServer",
     "imagePublisher": "MicrosoftWindowsServer",
 
